@@ -1,0 +1,44 @@
+{
+  "name": "universal-rest-api",
+  "version": "1.0.0",
+  "description": "A universal REST API template for Node.js frameworks with Swagger documentation.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test tests/**/*.test.js",
+    "test:integration": "node --test tests/integration/**/*.test.js",
+    "test:unit": "node --test tests/unit/**/*.test.js",
+    "test:coverage": "c8 npm test",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "docker:build": "docker build -t universal-rest-api .",
+    "docker:run": "docker run -p 3001:3001 universal-rest-api"
+  },
+  "dependencies": {
+    "@fastify/swagger": "^9.5.1",
+    "@fastify/swagger-ui": "^5.2.3",
+    "ajv": "^8.6.0",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "fastify": "^4.24.3",
+    "joi": "^17.4.2",
+    "jsonwebtoken": "^8.5.1",
+    "swagger-ui-express": "^4.1.6",
+    "zod": "^3.11.6"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
+  },
+  "keywords": [
+    "api",
+    "rest",
+    "nodejs",
+    "swagger",
+    "express",
+    "fastify"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
