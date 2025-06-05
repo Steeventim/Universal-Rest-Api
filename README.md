@@ -51,15 +51,13 @@ src/
     ├── swagger.config.js      # Configuration OpenAPI 3
     └── definitions/
         └── items.yaml         # Définitions Swagger pour items
-```
-
 ├── schemas/ # Schémas de validation
 ├── middleware/ # Middleware pour la gestion des requêtes et des erreurs
 ├── framework/ # Adaptations spécifiques aux frameworks
 ├── swagger/ # Configuration et définitions Swagger
 └── config/ # Configuration de l'application
 
-````
+```
 
 ## 🛠️ Installation
 
@@ -74,7 +72,7 @@ npm install
 # Configurer l'environnement
 cp .env.example .env
 # Éditer le fichier .env selon vos besoins
-````
+```
 
 ## ⚙️ Configuration
 
