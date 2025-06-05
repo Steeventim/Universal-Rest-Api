@@ -7,7 +7,7 @@ import {
   corsMiddleware,
   loggerMiddleware,
 } from "../../middleware/rateLimit.middleware.js";
-import { environment } from "../../config/environment.js";
+import { config } from "../../config/environment.js";
 
 export class ExpressAdapter {
   constructor() {
@@ -24,20 +24,20 @@ export class ExpressAdapter {
     // CORS middleware
     this.app.use(
       corsMiddleware({
-        origin: environment.CORS_ORIGIN || "*",
+        origin: config.CORS_ORIGIN || "*",
       })
     );
 
     // Logger middleware
-    if (environment.NODE_ENV !== "test") {
+    if (config.NODE_ENV !== "test") {
       this.app.use(loggerMiddleware);
     }
 
     // Rate limiting middleware
     this.app.use(
       rateLimitMiddleware({
-        windowMs: parseInt(environment.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-        maxRequests: parseInt(environment.RATE_LIMIT_MAX_REQUESTS) || 100,
+        windowMs: parseInt(config.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+        maxRequests: parseInt(config.RATE_LIMIT_MAX_REQUESTS) || 100,
       })
     );
 
@@ -74,6 +74,6 @@ export class ExpressAdapter {
   }
 
   listen(port, callback) {
-    return this.app.listen(port, callback);
+    return this.app.listen(port, '0.0.0.0', callback);
   }
 }
