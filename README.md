@@ -213,6 +213,7 @@ npm run dev
 
 ## Accéder à la documentation Swagger
 La documentation de l'API est accessible à l'adresse suivante :
+
 ```
 
 http://localhost:3000/docs
@@ -332,3 +333,61 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 ---
 
 **Développé avec ❤️ pour la communauté Node.js**
+
+## 🎓 Système de Formation Complet - Status ✅
+
+Ce repository contient maintenant un **système complet de formation API REST** avec 8 TPs progressifs :
+
+### 📚 TPs Disponibles
+
+| TP | Titre | Branche | Statut | Durée |
+|----|-------|---------|--------|-------|
+| **TP-01** | [Découverte](./README_TP_01.md) | `tp-01-decouverte` | ✅ Complet | 8h |
+| **TP-02** | [Premiers Pas](./README_TP_02.md) | `tp-02-premiers-pas` | ✅ Complet | 10h |
+| **TP-03** | [Validation & Middleware](./README_TP_03.md) | `tp-03-validation` | ✅ Complet | 8h |
+| **TP-04** | [Tests & Qualité](./README_TP_04.md) | `tp-04-tests` | ✅ Complet | 12h |
+| **TP-05** | [Sécurité](./README_TP_05.md) | `tp-05-securite` | ✅ Complet | 10h |
+| **TP-06** | [Base de Données](./README_TP_06.md) | `tp-06-database` | ✅ Complet | 12h |
+| **TP-07** | [API Avancée](./README_TP_07.md) | `tp-07-api-avancee` | ✅ Complet | 15h |
+| **TP-08** | [Déploiement](./README_TP_08.md) | `tp-08-deploiement` | ✅ Complet | 10h |
+
+### 📊 Métriques du Système
+
+- **Total heures** : 85h de formation progressive
+- **Niveaux** : Bronze (40h) → Silver (60h) → Gold (85h)
+- **Documents** : 32 fichiers de documentation
+- **Solutions** : +15 000 lignes de code d'exemples
+- **Tests** : 50+ tests automatisés
+- **Portfolio** : API e-commerce enterprise-grade
+
+### 🚀 Démarrage Rapide Formation
+
+```bash
+# Cloner le repository
+git clone https://github.com/Steeventim/Universal-Rest-Api.git
+cd Universal-Rest-Api
+
+# Accéder à un TP spécifique
+git checkout tp-01-decouverte  # Commencer par le TP-01
+
+# Consulter la documentation
+cat README_TP_01.md           # Documentation théorique
+cat EXERCICES_01.md           # Exercices pratiques
+cat SOLUTIONS_01.md           # Solutions détaillées
+cat OBJECTIFS_01.md           # Grille d'évaluation
+
+# Installation des dépendances
+npm install
+
+# Lancer les tests
+npm test
+
+# Démarrer le serveur
+npm start
+```
+
+### 📖 Guide Complet
+
+Pour une vue d'ensemble complète du système de formation, consultez le [Guide Complet](./GUIDE_COMPLET.md).
+
+---
