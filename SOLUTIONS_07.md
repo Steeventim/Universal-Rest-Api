@@ -12,13 +12,13 @@ Ce document contient les solutions complètes et détaillées pour tous les exer
 
 ```typescript
 // src/services/pagination.service.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 export interface PaginationOptions {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginationResult<T> {
@@ -39,8 +39,8 @@ export interface PaginationResult<T> {
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  sortBy: z.string().optional().default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
+  sortBy: z.string().optional().default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export class PaginationService {
@@ -71,7 +71,7 @@ export class PaginationService {
       hasNext: currentPage < totalPages,
       hasPrev: currentPage > 1,
       startIndex,
-      endIndex
+      endIndex,
     };
   }
 
@@ -83,11 +83,11 @@ export class PaginationService {
     options: PaginationOptions
   ): Promise<PaginationResult<T>> {
     const { page, limit, sortBy, sortOrder } = this.validateOptions(options);
-    
+
     // Construction du tri
     const sort: Record<string, 1 | -1> = {};
-    sort[sortBy!] = sortOrder === 'asc' ? 1 : -1;
-    
+    sort[sortBy!] = sortOrder === "asc" ? 1 : -1;
+
     // Exécution des requêtes en parallèle pour optimiser les performances
     const [data, totalItems] = await Promise.all([
       query
@@ -95,45 +95,54 @@ export class PaginationService {
         .skip((page - 1) * limit)
         .limit(limit)
         .exec(),
-      query.model.countDocuments(query.getFilter())
+      query.model.countDocuments(query.getFilter()),
     ]);
 
     const pagination = this.calculateMetadata(page, limit, totalItems);
 
     return {
       data,
-      pagination
+      pagination,
     };
   }
 
   /**
    * Génère les headers HTTP pour la pagination
    */
-  static generateHeaders(pagination: PaginationResult<any>['pagination'], baseUrl: string) {
+  static generateHeaders(
+    pagination: PaginationResult<any>["pagination"],
+    baseUrl: string
+  ) {
     const { currentPage, totalPages, totalItems, itemsPerPage } = pagination;
-    
+
     const headers: Record<string, string> = {
-      'X-Total-Count': totalItems.toString(),
-      'X-Total-Pages': totalPages.toString(),
-      'X-Current-Page': currentPage.toString(),
-      'X-Per-Page': itemsPerPage.toString()
+      "X-Total-Count": totalItems.toString(),
+      "X-Total-Pages": totalPages.toString(),
+      "X-Current-Page": currentPage.toString(),
+      "X-Per-Page": itemsPerPage.toString(),
     };
 
     // Construction des liens de navigation (RFC 5988)
     const links: string[] = [];
-    
+
     if (pagination.hasNext) {
-      links.push(`<${baseUrl}?page=${currentPage + 1}&limit=${itemsPerPage}>; rel="next"`);
-      links.push(`<${baseUrl}?page=${totalPages}&limit=${itemsPerPage}>; rel="last"`);
+      links.push(
+        `<${baseUrl}?page=${currentPage + 1}&limit=${itemsPerPage}>; rel="next"`
+      );
+      links.push(
+        `<${baseUrl}?page=${totalPages}&limit=${itemsPerPage}>; rel="last"`
+      );
     }
-    
+
     if (pagination.hasPrev) {
-      links.push(`<${baseUrl}?page=${currentPage - 1}&limit=${itemsPerPage}>; rel="prev"`);
+      links.push(
+        `<${baseUrl}?page=${currentPage - 1}&limit=${itemsPerPage}>; rel="prev"`
+      );
       links.push(`<${baseUrl}?page=1&limit=${itemsPerPage}>; rel="first"`);
     }
 
     if (links.length > 0) {
-      headers['Link'] = links.join(', ');
+      headers["Link"] = links.join(", ");
     }
 
     return headers;
@@ -145,9 +154,9 @@ export class PaginationService {
 
 ```typescript
 // src/controllers/items.controller.ts
-import { Request, Response, NextFunction } from 'express';
-import { PaginationService } from '../services/pagination.service.js';
-import { ItemService } from '../services/items.service.js';
+import { Request, Response, NextFunction } from "express";
+import { PaginationService } from "../services/pagination.service.js";
+import { ItemService } from "../services/items.service.js";
 
 export class ItemsController {
   /**
@@ -158,11 +167,11 @@ export class ItemsController {
     try {
       // Validation des paramètres de pagination
       const paginationOptions = PaginationService.validateOptions(req.query);
-      
+
       // Construction de la requête avec filtres optionnels
       const filters = ItemsController.buildFilters(req.query);
       const query = ItemService.buildQuery(filters);
-      
+
       // Application de la pagination
       const result = await PaginationService.paginateMongoQuery(
         query,
@@ -170,9 +179,12 @@ export class ItemsController {
       );
 
       // Génération des headers de pagination
-      const baseUrl = `${req.protocol}://${req.get('host')}${req.path}`;
-      const headers = PaginationService.generateHeaders(result.pagination, baseUrl);
-      
+      const baseUrl = `${req.protocol}://${req.get("host")}${req.path}`;
+      const headers = PaginationService.generateHeaders(
+        result.pagination,
+        baseUrl
+      );
+
       // Application des headers
       Object.entries(headers).forEach(([key, value]) => {
         res.set(key, value);
@@ -182,9 +194,8 @@ export class ItemsController {
         success: true,
         data: result.data,
         pagination: result.pagination,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       next(error);
     }
@@ -195,23 +206,23 @@ export class ItemsController {
    */
   private static buildFilters(query: any) {
     const filters: Record<string, any> = {};
-    
+
     // Filtres de base
     if (query.category) {
       filters.category = query.category;
     }
-    
+
     if (query.search) {
       filters.$text = { $search: query.search };
     }
-    
+
     // Filtres de prix
     if (query.minPrice || query.maxPrice) {
       filters.price = {};
       if (query.minPrice) filters.price.$gte = parseFloat(query.minPrice);
       if (query.maxPrice) filters.price.$lte = parseFloat(query.maxPrice);
     }
-    
+
     // Filtres de date
     if (query.dateFrom || query.dateTo) {
       filters.createdAt = {};
@@ -228,39 +239,39 @@ export class ItemsController {
 
 ```typescript
 // tests/unit/pagination.service.test.ts
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { PaginationService } from '../../src/services/pagination.service.js';
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { PaginationService } from "../../src/services/pagination.service.js";
 
-describe('PaginationService', () => {
-  describe('validateOptions', () => {
-    it('should validate and normalize pagination options', () => {
+describe("PaginationService", () => {
+  describe("validateOptions", () => {
+    it("should validate and normalize pagination options", () => {
       const options = PaginationService.validateOptions({
-        page: '2',
-        limit: '15',
-        sortBy: 'name',
-        sortOrder: 'asc'
+        page: "2",
+        limit: "15",
+        sortBy: "name",
+        sortOrder: "asc",
       });
 
       expect(options).toEqual({
         page: 2,
         limit: 15,
-        sortBy: 'name',
-        sortOrder: 'asc'
+        sortBy: "name",
+        sortOrder: "asc",
       });
     });
 
-    it('should apply default values', () => {
+    it("should apply default values", () => {
       const options = PaginationService.validateOptions({});
 
       expect(options).toEqual({
         page: 1,
         limit: 20,
-        sortBy: 'createdAt',
-        sortOrder: 'desc'
+        sortBy: "createdAt",
+        sortOrder: "desc",
       });
     });
 
-    it('should enforce limits', () => {
+    it("should enforce limits", () => {
       expect(() => {
         PaginationService.validateOptions({ limit: 200 });
       }).toThrow();
@@ -271,8 +282,8 @@ describe('PaginationService', () => {
     });
   });
 
-  describe('calculateMetadata', () => {
-    it('should calculate pagination metadata correctly', () => {
+  describe("calculateMetadata", () => {
+    it("should calculate pagination metadata correctly", () => {
       const metadata = PaginationService.calculateMetadata(2, 10, 25);
 
       expect(metadata).toEqual({
@@ -283,11 +294,11 @@ describe('PaginationService', () => {
         hasNext: true,
         hasPrev: true,
         startIndex: 10,
-        endIndex: 19
+        endIndex: 19,
       });
     });
 
-    it('should handle edge cases', () => {
+    it("should handle edge cases", () => {
       // Première page
       const firstPage = PaginationService.calculateMetadata(1, 10, 25);
       expect(firstPage.hasPrev).toBe(false);
@@ -301,8 +312,8 @@ describe('PaginationService', () => {
     });
   });
 
-  describe('generateHeaders', () => {
-    it('should generate correct pagination headers', () => {
+  describe("generateHeaders", () => {
+    it("should generate correct pagination headers", () => {
       const pagination = {
         currentPage: 2,
         totalPages: 5,
@@ -311,15 +322,18 @@ describe('PaginationService', () => {
         hasNext: true,
         hasPrev: true,
         startIndex: 20,
-        endIndex: 39
+        endIndex: 39,
       };
 
-      const headers = PaginationService.generateHeaders(pagination, 'http://api.example.com/items');
+      const headers = PaginationService.generateHeaders(
+        pagination,
+        "http://api.example.com/items"
+      );
 
-      expect(headers['X-Total-Count']).toBe('100');
-      expect(headers['X-Current-Page']).toBe('2');
-      expect(headers['Link']).toContain('rel="next"');
-      expect(headers['Link']).toContain('rel="prev"');
+      expect(headers["X-Total-Count"]).toBe("100");
+      expect(headers["X-Current-Page"]).toBe("2");
+      expect(headers["Link"]).toContain('rel="next"');
+      expect(headers["Link"]).toContain('rel="prev"');
     });
   });
 });
@@ -333,14 +347,14 @@ describe('PaginationService', () => {
 
 ```typescript
 // src/services/cursor-pagination.service.ts
-import { z } from 'zod';
-import jwt from 'jsonwebtoken';
+import { z } from "zod";
+import jwt from "jsonwebtoken";
 
 export interface CursorPaginationOptions {
   cursor?: string;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export interface CursorPaginationResult<T> {
@@ -363,12 +377,13 @@ interface CursorData {
 export const cursorPaginationSchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  sortBy: z.string().default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
+  sortBy: z.string().default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export class CursorPaginationService {
-  private static readonly SECRET = process.env.CURSOR_SECRET || 'cursor-secret-key';
+  private static readonly SECRET =
+    process.env.CURSOR_SECRET || "cursor-secret-key";
 
   /**
    * Encode un cursor de manière sécurisée
@@ -377,12 +392,12 @@ export class CursorPaginationService {
     const cursorData: CursorData = {
       value,
       id,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
-    return jwt.sign(cursorData, this.SECRET, { 
-      expiresIn: '24h',
-      algorithm: 'HS256'
+    return jwt.sign(cursorData, this.SECRET, {
+      expiresIn: "24h",
+      algorithm: "HS256",
     });
   }
 
@@ -412,11 +427,11 @@ export class CursorPaginationService {
     options: CursorPaginationOptions
   ): Promise<CursorPaginationResult<T>> {
     const { cursor, limit, sortBy, sortOrder } = this.validateOptions(options);
-    
+
     // Construction du tri
     const sort: Record<string, 1 | -1> = {};
-    sort[sortBy!] = sortOrder === 'asc' ? 1 : -1;
-    sort['_id'] = sortOrder === 'asc' ? 1 : -1; // Garantit l'unicité du tri
+    sort[sortBy!] = sortOrder === "asc" ? 1 : -1;
+    sort["_id"] = sortOrder === "asc" ? 1 : -1; // Garantit l'unicité du tri
 
     let query = baseQuery.clone();
 
@@ -424,7 +439,7 @@ export class CursorPaginationService {
     if (cursor) {
       const cursorData = this.decodeCursor(cursor);
       if (!cursorData) {
-        throw new Error('Invalid cursor');
+        throw new Error("Invalid cursor");
       }
 
       // Construction de la condition de cursor
@@ -434,7 +449,7 @@ export class CursorPaginationService {
         cursorData.id,
         sortOrder!
       );
-      
+
       query = query.find(cursorCondition);
     }
 
@@ -451,17 +466,17 @@ export class CursorPaginationService {
     }
 
     // Génération des cursors
-    const cursors: CursorPaginationResult<T>['cursors'] = {};
-    
+    const cursors: CursorPaginationResult<T>["cursors"] = {};
+
     if (data.length > 0) {
       const firstItem = data[0];
       const lastItem = data[data.length - 1];
-      
+
       cursors.before = this.encodeCursor(
         firstItem[sortBy!],
         firstItem._id.toString()
       );
-      
+
       cursors.after = this.encodeCursor(
         lastItem[sortBy!],
         lastItem._id.toString()
@@ -470,8 +485,11 @@ export class CursorPaginationService {
 
     // Estimation du total (optionnel, coûteux sur de gros datasets)
     let totalEstimate;
-    if (data.length < 1000) { // Seulement pour les petits datasets
-      totalEstimate = await baseQuery.model.countDocuments(baseQuery.getFilter());
+    if (data.length < 1000) {
+      // Seulement pour les petits datasets
+      totalEstimate = await baseQuery.model.countDocuments(
+        baseQuery.getFilter()
+      );
     }
 
     return {
@@ -479,7 +497,7 @@ export class CursorPaginationService {
       cursors,
       hasNext,
       hasPrev: !!cursor,
-      totalEstimate
+      totalEstimate,
     };
   }
 
@@ -490,26 +508,29 @@ export class CursorPaginationService {
     sortBy: string,
     cursorValue: any,
     cursorId: string,
-    sortOrder: 'asc' | 'desc'
+    sortOrder: "asc" | "desc"
   ) {
-    const operator = sortOrder === 'asc' ? '$gt' : '$lt';
-    const equalOperator = sortOrder === 'asc' ? '$gte' : '$lte';
+    const operator = sortOrder === "asc" ? "$gt" : "$lt";
+    const equalOperator = sortOrder === "asc" ? "$gte" : "$lte";
 
     return {
       $or: [
         { [sortBy]: { [operator]: cursorValue } },
         {
           [sortBy]: cursorValue,
-          _id: { [operator]: cursorId }
-        }
-      ]
+          _id: { [operator]: cursorId },
+        },
+      ],
     };
   }
 
   /**
    * Benchmark entre pagination offset et cursor
    */
-  static async benchmark(model: any, testSizes: number[] = [1000, 10000, 50000]) {
+  static async benchmark(
+    model: any,
+    testSizes: number[] = [1000, 10000, 50000]
+  ) {
     const results: Array<{
       size: number;
       offset: { time: number; memory: number };
@@ -518,26 +539,36 @@ export class CursorPaginationService {
 
     for (const size of testSizes) {
       console.log(`Benchmarking pagination with ${size} documents...`);
-      
+
       // Test pagination offset
       const offsetStart = process.hrtime.bigint();
       const offsetMemStart = process.memoryUsage().heapUsed;
-      
-      await model.find().skip(size / 2).limit(20).exec();
-      
+
+      await model
+        .find()
+        .skip(size / 2)
+        .limit(20)
+        .exec();
+
       const offsetEnd = process.hrtime.bigint();
       const offsetMemEnd = process.memoryUsage().heapUsed;
-      
+
       // Test pagination cursor
       const cursorStart = process.hrtime.bigint();
       const cursorMemStart = process.memoryUsage().heapUsed;
-      
-      const middleDoc = await model.findOne().skip(size / 2).exec();
+
+      const middleDoc = await model
+        .findOne()
+        .skip(size / 2)
+        .exec();
       if (middleDoc) {
-        const cursor = this.encodeCursor(middleDoc.createdAt, middleDoc._id.toString());
+        const cursor = this.encodeCursor(
+          middleDoc.createdAt,
+          middleDoc._id.toString()
+        );
         await this.paginateMongoQuery(model.find(), { cursor, limit: 20 });
       }
-      
+
       const cursorEnd = process.hrtime.bigint();
       const cursorMemEnd = process.memoryUsage().heapUsed;
 
@@ -545,12 +576,12 @@ export class CursorPaginationService {
         size,
         offset: {
           time: Number(offsetEnd - offsetStart) / 1000000, // Convert to ms
-          memory: offsetMemEnd - offsetMemStart
+          memory: offsetMemEnd - offsetMemStart,
         },
         cursor: {
           time: Number(cursorEnd - cursorStart) / 1000000,
-          memory: cursorMemEnd - cursorMemStart
-        }
+          memory: cursorMemEnd - cursorMemStart,
+        },
       });
     }
 
@@ -560,27 +591,32 @@ export class CursorPaginationService {
   /**
    * Recommandation automatique du type de pagination
    */
-  static recommendPaginationType(totalItems: number, requestedPage: number): {
-    recommended: 'offset' | 'cursor';
+  static recommendPaginationType(
+    totalItems: number,
+    requestedPage: number
+  ): {
+    recommended: "offset" | "cursor";
     reason: string;
   } {
     if (totalItems < 1000) {
       return {
-        recommended: 'offset',
-        reason: 'Small dataset, offset pagination is sufficient'
+        recommended: "offset",
+        reason: "Small dataset, offset pagination is sufficient",
       };
     }
 
-    if (requestedPage * 20 > 1000) { // Assuming 20 items per page
+    if (requestedPage * 20 > 1000) {
+      // Assuming 20 items per page
       return {
-        recommended: 'cursor',
-        reason: 'Deep pagination detected, cursor pagination recommended for performance'
+        recommended: "cursor",
+        reason:
+          "Deep pagination detected, cursor pagination recommended for performance",
       };
     }
 
     return {
-      recommended: 'offset',
-      reason: 'Shallow pagination, offset is acceptable'
+      recommended: "offset",
+      reason: "Shallow pagination, offset is acceptable",
     };
   }
 }
@@ -595,19 +631,23 @@ export class ItemsController {
    * Endpoint intelligent qui choisit automatiquement le type de pagination
    * GET /api/items?cursor=... OU ?page=...
    */
-  static async getItemsIntelligent(req: Request, res: Response, next: NextFunction) {
+  static async getItemsIntelligent(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
     try {
       const hasCursor = !!req.query.cursor;
       const hasPage = !!req.query.page;
 
       if (hasCursor && hasPage) {
         return res.status(400).json({
-          error: 'Cannot use both cursor and page parameters simultaneously'
+          error: "Cannot use both cursor and page parameters simultaneously",
         });
       }
 
       let result;
-      let paginationType: 'offset' | 'cursor';
+      let paginationType: "offset" | "cursor";
 
       if (hasCursor) {
         // Utilisation de la pagination cursor
@@ -615,13 +655,13 @@ export class ItemsController {
           ItemService.buildQuery(ItemsController.buildFilters(req.query)),
           req.query
         );
-        paginationType = 'cursor';
+        paginationType = "cursor";
       } else {
         // Utilisation de la pagination offset avec recommandation
         const totalItems = await ItemService.countDocuments(
           ItemsController.buildFilters(req.query)
         );
-        
+
         const page = parseInt(req.query.page as string) || 1;
         const recommendation = CursorPaginationService.recommendPaginationType(
           totalItems,
@@ -632,23 +672,22 @@ export class ItemsController {
           ItemService.buildQuery(ItemsController.buildFilters(req.query)),
           req.query
         );
-        paginationType = 'offset';
+        paginationType = "offset";
 
         // Ajout de la recommandation dans les headers
-        res.set('X-Pagination-Recommendation', JSON.stringify(recommendation));
+        res.set("X-Pagination-Recommendation", JSON.stringify(recommendation));
       }
 
       res.json({
         success: true,
         data: result.data,
-        pagination: paginationType === 'offset' ? result.pagination : undefined,
-        cursors: paginationType === 'cursor' ? result.cursors : undefined,
+        pagination: paginationType === "offset" ? result.pagination : undefined,
+        cursors: paginationType === "cursor" ? result.cursors : undefined,
         hasNext: result.hasNext,
         hasPrev: result.hasPrev,
         paginationType,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       next(error);
     }
@@ -664,9 +703,9 @@ export class ItemsController {
 
 ```typescript
 // src/services/search.service.ts
-import { z } from 'zod';
-import Redis from 'ioredis';
-import { performance } from 'perf_hooks';
+import { z } from "zod";
+import Redis from "ioredis";
+import { performance } from "perf_hooks";
 
 export interface SearchOptions {
   q?: string;
@@ -683,7 +722,7 @@ export interface FacetResult {
     count: number;
     selected: boolean;
   }>;
-  type: 'terms' | 'range' | 'date_histogram';
+  type: "terms" | "range" | "date_histogram";
   total: number;
 }
 
@@ -706,11 +745,13 @@ const searchSchema = z.object({
   facets: z.array(z.string()).default([]),
   fuzzy: z.boolean().default(false),
   suggestions: z.boolean().default(true),
-  boost: z.record(z.number()).default({})
+  boost: z.record(z.number()).default({}),
 });
 
 export class SearchService {
-  private static redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+  private static redis = new Redis(
+    process.env.REDIS_URL || "redis://localhost:6379"
+  );
   private static readonly CACHE_TTL = 300; // 5 minutes
 
   /**
@@ -722,10 +763,10 @@ export class SearchService {
   ): Promise<SearchResult<T>> {
     const startTime = performance.now();
     const validatedOptions = searchSchema.parse(options);
-    
+
     // Génération de la clé de cache
     const cacheKey = this.generateCacheKey(validatedOptions);
-    
+
     // Tentative de récupération depuis le cache
     const cachedResult = await this.getCachedResult(cacheKey);
     if (cachedResult) {
@@ -735,16 +776,14 @@ export class SearchService {
 
     // Construction de la requête de recherche
     const searchQuery = this.buildSearchQuery(validatedOptions);
-    
+
     // Exécution des requêtes en parallèle
-    const [
-      searchResults,
-      facetResults,
-      suggestions
-    ] = await Promise.all([
+    const [searchResults, facetResults, suggestions] = await Promise.all([
       this.executeSearchQuery(model, searchQuery, validatedOptions),
       this.calculateFacets(model, searchQuery, validatedOptions.facets),
-      validatedOptions.suggestions ? this.generateSuggestions(validatedOptions.q) : []
+      validatedOptions.suggestions
+        ? this.generateSuggestions(validatedOptions.q)
+        : [],
     ]);
 
     const result: SearchResult<T> = {
@@ -754,10 +793,10 @@ export class SearchService {
       totalMatches: searchResults.total,
       searchTime: performance.now() - startTime,
       query: {
-        normalized: this.normalizeQuery(validatedOptions.q || ''),
-        terms: this.extractTerms(validatedOptions.q || ''),
-        filters: validatedOptions.filters
-      }
+        normalized: this.normalizeQuery(validatedOptions.q || ""),
+        terms: this.extractTerms(validatedOptions.q || ""),
+        filters: validatedOptions.filters,
+      },
     };
 
     // Mise en cache du résultat
@@ -771,7 +810,7 @@ export class SearchService {
    */
   private static buildSearchQuery(options: SearchOptions) {
     const query: any = {};
-    
+
     // Recherche textuelle
     if (options.q) {
       if (options.fuzzy) {
@@ -779,8 +818,8 @@ export class SearchService {
         const fuzzyPattern = this.buildFuzzyPattern(options.q);
         query.$or = [
           { $text: { $search: options.q } },
-          { name: { $regex: fuzzyPattern, $options: 'i' } },
-          { description: { $regex: fuzzyPattern, $options: 'i' } }
+          { name: { $regex: fuzzyPattern, $options: "i" } },
+          { description: { $regex: fuzzyPattern, $options: "i" } },
         ];
       } else {
         query.$text = { $search: options.q };
@@ -791,7 +830,10 @@ export class SearchService {
     Object.entries(options.filters || {}).forEach(([field, value]) => {
       if (Array.isArray(value)) {
         query[field] = { $in: value };
-      } else if (typeof value === 'object' && value.min !== undefined || value.max !== undefined) {
+      } else if (
+        (typeof value === "object" && value.min !== undefined) ||
+        value.max !== undefined
+      ) {
         // Filtre de plage
         query[field] = {};
         if (value.min !== undefined) query[field].$gte = value.min;
@@ -816,13 +858,13 @@ export class SearchService {
 
     // Application du scoring pour la recherche textuelle
     if (options.q) {
-      mongoQuery = mongoQuery.select({ score: { $meta: 'textScore' } });
-      mongoQuery = mongoQuery.sort({ score: { $meta: 'textScore' } });
+      mongoQuery = mongoQuery.select({ score: { $meta: "textScore" } });
+      mongoQuery = mongoQuery.sort({ score: { $meta: "textScore" } });
     }
 
     const [data, total] = await Promise.all([
       mongoQuery.exec(),
-      model.countDocuments(query)
+      model.countDocuments(query),
     ]);
 
     return { data, total };
@@ -840,13 +882,23 @@ export class SearchService {
 
     for (const field of facetFields) {
       const facetConfig = this.getFacetConfig(field);
-      
-      if (facetConfig.type === 'terms') {
+
+      if (facetConfig.type === "terms") {
         facets[field] = await this.calculateTermsFacet(model, baseQuery, field);
-      } else if (facetConfig.type === 'range') {
-        facets[field] = await this.calculateRangeFacet(model, baseQuery, field, facetConfig.ranges);
-      } else if (facetConfig.type === 'date_histogram') {
-        facets[field] = await this.calculateDateHistogramFacet(model, baseQuery, field, facetConfig.interval);
+      } else if (facetConfig.type === "range") {
+        facets[field] = await this.calculateRangeFacet(
+          model,
+          baseQuery,
+          field,
+          facetConfig.ranges
+        );
+      } else if (facetConfig.type === "date_histogram") {
+        facets[field] = await this.calculateDateHistogramFacet(
+          model,
+          baseQuery,
+          field,
+          facetConfig.interval
+        );
       }
     }
 
@@ -865,19 +917,19 @@ export class SearchService {
       { $match: baseQuery },
       { $group: { _id: `$${field}`, count: { $sum: 1 } } },
       { $sort: { count: -1 } },
-      { $limit: 20 }
+      { $limit: 20 },
     ];
 
     const results = await model.aggregate(pipeline);
-    
+
     return {
-      type: 'terms',
+      type: "terms",
       total: results.length,
-      values: results.map(r => ({
+      values: results.map((r) => ({
         value: r._id,
         count: r.count,
-        selected: false // À déterminer selon les filtres actifs
-      }))
+        selected: false, // À déterminer selon les filtres actifs
+      })),
     };
   }
 
@@ -890,29 +942,29 @@ export class SearchService {
     field: string,
     ranges: Array<{ min?: number; max?: number; label: string }>
   ): Promise<FacetResult> {
-    const facetQueries = ranges.map(async range => {
+    const facetQueries = ranges.map(async (range) => {
       const rangeQuery = { ...baseQuery };
-      
+
       if (range.min !== undefined || range.max !== undefined) {
         rangeQuery[field] = {};
         if (range.min !== undefined) rangeQuery[field].$gte = range.min;
         if (range.max !== undefined) rangeQuery[field].$lte = range.max;
       }
-      
+
       const count = await model.countDocuments(rangeQuery);
       return {
         value: range.label,
         count,
-        selected: false
+        selected: false,
       };
     });
 
     const values = await Promise.all(facetQueries);
 
     return {
-      type: 'range',
+      type: "range",
       total: values.length,
-      values
+      values,
     };
   }
 
@@ -924,17 +976,21 @@ export class SearchService {
 
     const cacheKey = `suggestions:${query.toLowerCase()}`;
     const cached = await this.redis.get(cacheKey);
-    
+
     if (cached) {
       return JSON.parse(cached);
     }
 
     // Recherche de termes similaires dans un index de suggestions
     const suggestions = await this.findSimilarTerms(query);
-    
+
     // Mise en cache des suggestions
-    await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(suggestions));
-    
+    await this.redis.setex(
+      cacheKey,
+      this.CACHE_TTL,
+      JSON.stringify(suggestions)
+    );
+
     return suggestions;
   }
 
@@ -944,10 +1000,14 @@ export class SearchService {
   private static async findSimilarTerms(query: string): Promise<string[]> {
     // Dans un vrai système, ceci utiliserait un index de recherche comme Elasticsearch
     const suggestions: string[] = [];
-    
+
     // Suggestions basées sur des termes populaires pré-indexés
-    const popularTerms = await this.redis.zrevrange('popular_search_terms', 0, 10);
-    
+    const popularTerms = await this.redis.zrevrange(
+      "popular_search_terms",
+      0,
+      10
+    );
+
     for (const term of popularTerms) {
       if (term.toLowerCase().includes(query.toLowerCase())) {
         suggestions.push(term);
@@ -968,13 +1028,15 @@ export class SearchService {
   private static generateSpellingSuggestions(query: string): string[] {
     // Implémentation simplifiée - dans un vrai système, utiliser une bibliothèque comme node-spell-checker
     const commonMisspellings: Record<string, string> = {
-      'eletronic': 'electronic',
-      'compter': 'computer',
-      'sofware': 'software'
+      eletronic: "electronic",
+      compter: "computer",
+      sofware: "software",
     };
 
     return Object.entries(commonMisspellings)
-      .filter(([wrong]) => this.levenshteinDistance(query.toLowerCase(), wrong) <= 2)
+      .filter(
+        ([wrong]) => this.levenshteinDistance(query.toLowerCase(), wrong) <= 2
+      )
       .map(([, correct]) => correct);
   }
 
@@ -982,7 +1044,9 @@ export class SearchService {
    * Calcul de la distance de Levenshtein
    */
   private static levenshteinDistance(str1: string, str2: string): number {
-    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    const matrix = Array(str2.length + 1)
+      .fill(null)
+      .map(() => Array(str1.length + 1).fill(null));
 
     for (let i = 0; i <= str1.length; i += 1) {
       matrix[0][i] = i;
@@ -1011,53 +1075,60 @@ export class SearchService {
    */
   private static getFacetConfig(field: string) {
     const configs: Record<string, any> = {
-      category: { type: 'terms' },
-      brand: { type: 'terms' },
-      price: { 
-        type: 'range', 
+      category: { type: "terms" },
+      brand: { type: "terms" },
+      price: {
+        type: "range",
         ranges: [
-          { max: 50, label: 'Under $50' },
-          { min: 50, max: 100, label: '$50 - $100' },
-          { min: 100, max: 500, label: '$100 - $500' },
-          { min: 500, label: 'Over $500' }
-        ]
+          { max: 50, label: "Under $50" },
+          { min: 50, max: 100, label: "$50 - $100" },
+          { min: 100, max: 500, label: "$100 - $500" },
+          { min: 500, label: "Over $500" },
+        ],
       },
-      createdAt: { 
-        type: 'date_histogram', 
-        interval: 'month' 
-      }
+      createdAt: {
+        type: "date_histogram",
+        interval: "month",
+      },
     };
 
-    return configs[field] || { type: 'terms' };
+    return configs[field] || { type: "terms" };
   }
 
   /**
    * Utilitaires de cache
    */
   private static generateCacheKey(options: SearchOptions): string {
-    return `search:${Buffer.from(JSON.stringify(options)).toString('base64')}`;
+    return `search:${Buffer.from(JSON.stringify(options)).toString("base64")}`;
   }
 
-  private static async getCachedResult(key: string): Promise<SearchResult<any> | null> {
+  private static async getCachedResult(
+    key: string
+  ): Promise<SearchResult<any> | null> {
     const cached = await this.redis.get(key);
     return cached ? JSON.parse(cached) : null;
   }
 
-  private static async cacheResult(key: string, result: SearchResult<any>): Promise<void> {
+  private static async cacheResult(
+    key: string,
+    result: SearchResult<any>
+  ): Promise<void> {
     await this.redis.setex(key, this.CACHE_TTL, JSON.stringify(result));
   }
 
   private static normalizeQuery(query: string): string {
-    return query.toLowerCase().trim().replace(/\s+/g, ' ');
+    return query.toLowerCase().trim().replace(/\s+/g, " ");
   }
 
   private static extractTerms(query: string): string[] {
-    return this.normalizeQuery(query).split(' ').filter(term => term.length > 1);
+    return this.normalizeQuery(query)
+      .split(" ")
+      .filter((term) => term.length > 1);
   }
 
   private static buildFuzzyPattern(query: string): string {
     // Génère un pattern regex pour la recherche floue
-    return query.split('').join('.*?');
+    return query.split("").join(".*?");
   }
 }
 ```
@@ -1070,12 +1141,12 @@ export class SearchService {
 
 ```typescript
 // src/middleware/upload.middleware.ts
-import multer from 'multer';
-import sharp from 'sharp';
-import { v4 as uuidv4 } from 'uuid';
-import path from 'path';
-import fs from 'fs/promises';
-import { Request, Response, NextFunction } from 'express';
+import multer from "multer";
+import sharp from "sharp";
+import { v4 as uuidv4 } from "uuid";
+import path from "path";
+import fs from "fs/promises";
+import { Request, Response, NextFunction } from "express";
 
 export interface UploadConfig {
   destination: string;
@@ -1085,7 +1156,7 @@ export interface UploadConfig {
   imageProcessing?: {
     resize?: { width: number; height: number };
     quality?: number;
-    format?: 'jpeg' | 'png' | 'webp';
+    format?: "jpeg" | "png" | "webp";
     thumbnail?: { width: number; height: number };
   };
 }
@@ -1109,35 +1180,39 @@ export interface ProcessedFile {
 export class UploadMiddleware {
   private static readonly configs: Record<string, UploadConfig> = {
     images: {
-      destination: './uploads/images/',
+      destination: "./uploads/images/",
       maxFileSize: 5 * 1024 * 1024, // 5MB
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-      allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+      allowedExtensions: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
       imageProcessing: {
         resize: { width: 1200, height: 1200 },
         quality: 85,
-        format: 'jpeg',
-        thumbnail: { width: 300, height: 300 }
-      }
+        format: "jpeg",
+        thumbnail: { width: 300, height: 300 },
+      },
     },
     documents: {
-      destination: './uploads/documents/',
+      destination: "./uploads/documents/",
       maxFileSize: 10 * 1024 * 1024, // 10MB
-      allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-      allowedExtensions: ['.pdf', '.doc', '.docx']
+      allowedMimeTypes: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ],
+      allowedExtensions: [".pdf", ".doc", ".docx"],
     },
     avatars: {
-      destination: './uploads/avatars/',
+      destination: "./uploads/avatars/",
       maxFileSize: 2 * 1024 * 1024, // 2MB
-      allowedMimeTypes: ['image/jpeg', 'image/png'],
-      allowedExtensions: ['.jpg', '.jpeg', '.png'],
+      allowedMimeTypes: ["image/jpeg", "image/png"],
+      allowedExtensions: [".jpg", ".jpeg", ".png"],
       imageProcessing: {
         resize: { width: 400, height: 400 },
         quality: 90,
-        format: 'jpeg',
-        thumbnail: { width: 100, height: 100 }
-      }
-    }
+        format: "jpeg",
+        thumbnail: { width: 100, height: 100 },
+      },
+    },
   };
 
   /**
@@ -1156,26 +1231,42 @@ export class UploadMiddleware {
           await fs.mkdir(config.destination, { recursive: true });
           cb(null, config.destination);
         } catch (error) {
-          cb(error as Error, '');
+          cb(error as Error, "");
         }
       },
       filename: (req, file, cb) => {
         const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
         cb(null, uniqueName);
-      }
+      },
     });
 
     // Configuration des filtres
-    const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    const fileFilter = (
+      req: Request,
+      file: Express.Multer.File,
+      cb: multer.FileFilterCallback
+    ) => {
       // Validation du type MIME
       if (!config.allowedMimeTypes.includes(file.mimetype)) {
-        return cb(new Error(`File type ${file.mimetype} not allowed. Allowed types: ${config.allowedMimeTypes.join(', ')}`));
+        return cb(
+          new Error(
+            `File type ${
+              file.mimetype
+            } not allowed. Allowed types: ${config.allowedMimeTypes.join(", ")}`
+          )
+        );
       }
 
       // Validation de l'extension
       const extension = path.extname(file.originalname).toLowerCase();
       if (!config.allowedExtensions.includes(extension)) {
-        return cb(new Error(`File extension ${extension} not allowed. Allowed extensions: ${config.allowedExtensions.join(', ')}`));
+        return cb(
+          new Error(
+            `File extension ${extension} not allowed. Allowed extensions: ${config.allowedExtensions.join(
+              ", "
+            )}`
+          )
+        );
       }
 
       cb(null, true);
@@ -1186,24 +1277,24 @@ export class UploadMiddleware {
       fileFilter,
       limits: {
         fileSize: config.maxFileSize,
-        files: 5 // Maximum 5 fichiers par requête
-      }
+        files: 5, // Maximum 5 fichiers par requête
+      },
     });
 
     // Middleware de traitement après upload
     return {
       single: (fieldName: string) => [
         upload.single(fieldName),
-        this.processUploadedFiles(config)
+        this.processUploadedFiles(config),
       ],
       multiple: (fieldName: string, maxCount: number = 5) => [
         upload.array(fieldName, maxCount),
-        this.processUploadedFiles(config)
+        this.processUploadedFiles(config),
       ],
       fields: (fields: Array<{ name: string; maxCount?: number }>) => [
         upload.fields(fields),
-        this.processUploadedFiles(config)
-      ]
+        this.processUploadedFiles(config),
+      ],
     };
   }
 
@@ -1223,7 +1314,7 @@ export class UploadMiddleware {
 
         // Ajout des fichiers traités à la requête
         (req as any).processedFiles = processedFiles;
-        
+
         next();
       } catch (error) {
         // Nettoyage des fichiers en cas d'erreur
@@ -1247,12 +1338,15 @@ export class UploadMiddleware {
       size: file.size,
       mimeType: file.mimetype,
       extension: path.extname(file.originalname).toLowerCase(),
-      checksum: await this.calculateChecksum(file.path)
+      checksum: await this.calculateChecksum(file.path),
     };
 
     // Traitement des images si configuré
-    if (config.imageProcessing && file.mimetype.startsWith('image/')) {
-      const imageProcessing = await this.processImage(file.path, config.imageProcessing);
+    if (config.imageProcessing && file.mimetype.startsWith("image/")) {
+      const imageProcessing = await this.processImage(
+        file.path,
+        config.imageProcessing
+      );
       processedFile.metadata = imageProcessing.metadata;
       processedFile.thumbnail = imageProcessing.thumbnail;
     }
@@ -1265,7 +1359,7 @@ export class UploadMiddleware {
    */
   private static async processImage(
     filePath: string,
-    processingConfig: NonNullable<UploadConfig['imageProcessing']>
+    processingConfig: NonNullable<UploadConfig["imageProcessing"]>
   ) {
     const image = sharp(filePath);
     const metadata = await image.metadata();
@@ -1274,24 +1368,28 @@ export class UploadMiddleware {
     if (processingConfig.resize) {
       await image
         .resize(processingConfig.resize.width, processingConfig.resize.height, {
-          fit: 'inside',
-          withoutEnlargement: true
+          fit: "inside",
+          withoutEnlargement: true,
         })
         .jpeg({ quality: processingConfig.quality || 85 })
-        .toFile(filePath + '.processed');
+        .toFile(filePath + ".processed");
 
       // Remplacement du fichier original
-      await fs.rename(filePath + '.processed', filePath);
+      await fs.rename(filePath + ".processed", filePath);
     }
 
     // Génération de thumbnail
     let thumbnail;
     if (processingConfig.thumbnail) {
-      const thumbnailPath = filePath.replace(/(\.[^.]+)$/, '_thumb$1');
+      const thumbnailPath = filePath.replace(/(\.[^.]+)$/, "_thumb$1");
       const thumbnailBuffer = await image
-        .resize(processingConfig.thumbnail.width, processingConfig.thumbnail.height, {
-          fit: 'cover'
-        })
+        .resize(
+          processingConfig.thumbnail.width,
+          processingConfig.thumbnail.height,
+          {
+            fit: "cover",
+          }
+        )
         .jpeg({ quality: 80 })
         .toBuffer();
 
@@ -1300,7 +1398,7 @@ export class UploadMiddleware {
       thumbnail = {
         filename: path.basename(thumbnailPath),
         path: thumbnailPath,
-        size: thumbnailBuffer.length
+        size: thumbnailBuffer.length,
       };
     }
 
@@ -1310,9 +1408,9 @@ export class UploadMiddleware {
         height: metadata.height,
         format: metadata.format,
         channels: metadata.channels,
-        hasAlpha: metadata.hasAlpha
+        hasAlpha: metadata.hasAlpha,
       },
-      thumbnail
+      thumbnail,
     };
   }
 
@@ -1320,9 +1418,9 @@ export class UploadMiddleware {
    * Calcul du checksum d'un fichier
    */
   private static async calculateChecksum(filePath: string): Promise<string> {
-    const crypto = await import('crypto');
+    const crypto = await import("crypto");
     const fileBuffer = await fs.readFile(filePath);
-    return crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    return crypto.createHash("sha256").update(fileBuffer).digest("hex");
   }
 
   /**
@@ -1330,35 +1428,37 @@ export class UploadMiddleware {
    */
   private static extractFiles(req: Request): Express.Multer.File[] {
     const files: Express.Multer.File[] = [];
-    
+
     if (req.file) {
       files.push(req.file);
     }
-    
+
     if (req.files) {
       if (Array.isArray(req.files)) {
         files.push(...req.files);
       } else {
-        Object.values(req.files).forEach(fileArray => {
+        Object.values(req.files).forEach((fileArray) => {
           if (Array.isArray(fileArray)) {
             files.push(...fileArray);
           }
         });
       }
     }
-    
+
     return files;
   }
 
   /**
    * Nettoyage des fichiers en cas d'erreur
    */
-  private static async cleanupFiles(files: Express.Multer.File[]): Promise<void> {
+  private static async cleanupFiles(
+    files: Express.Multer.File[]
+  ): Promise<void> {
     for (const file of files) {
       try {
         await fs.unlink(file.path);
         // Nettoyage du thumbnail s'il existe
-        const thumbnailPath = file.path.replace(/(\.[^.]+)$/, '_thumb$1');
+        const thumbnailPath = file.path.replace(/(\.[^.]+)$/, "_thumb$1");
         try {
           await fs.unlink(thumbnailPath);
         } catch {
@@ -1376,9 +1476,9 @@ export class UploadMiddleware {
 
 ```typescript
 // src/services/file.service.ts
-import { ProcessedFile } from '../middleware/upload.middleware.js';
-import fs from 'fs/promises';
-import path from 'path';
+import { ProcessedFile } from "../middleware/upload.middleware.js";
+import fs from "fs/promises";
+import path from "path";
 
 export interface FileDocument {
   _id: string;
@@ -1417,7 +1517,7 @@ export class FileService {
     const savedFiles: FileDocument[] = [];
 
     for (const file of processedFiles) {
-      const fileDoc: Omit<FileDocument, '_id'> = {
+      const fileDoc: Omit<FileDocument, "_id"> = {
         originalName: file.originalName,
         filename: file.filename,
         path: file.path,
@@ -1427,16 +1527,18 @@ export class FileService {
         extension: file.extension,
         checksum: file.checksum,
         metadata: file.metadata,
-        thumbnail: file.thumbnail ? {
-          filename: file.thumbnail.filename,
-          path: file.thumbnail.path,
-          url: this.generateFileUrl(file.thumbnail.filename),
-          size: file.thumbnail.size
-        } : undefined,
+        thumbnail: file.thumbnail
+          ? {
+              filename: file.thumbnail.filename,
+              path: file.thumbnail.path,
+              url: this.generateFileUrl(file.thumbnail.filename),
+              size: file.thumbnail.size,
+            }
+          : undefined,
         uploadedBy,
         uploadedAt: new Date(),
         downloads: 0,
-        isPublic
+        isPublic,
       };
 
       const saved = await this.model.create(fileDoc);
@@ -1449,14 +1551,17 @@ export class FileService {
   /**
    * Récupération d'un fichier par ID
    */
-  static async getFileById(fileId: string, userId?: string): Promise<FileDocument | null> {
+  static async getFileById(
+    fileId: string,
+    userId?: string
+  ): Promise<FileDocument | null> {
     const file = await this.model.findById(fileId);
-    
+
     if (!file) return null;
-    
+
     // Vérification des permissions
     if (!file.isPublic && file.uploadedBy !== userId) {
-      throw new Error('Access denied');
+      throw new Error("Access denied");
     }
 
     return file;
@@ -1467,16 +1572,16 @@ export class FileService {
    */
   static async serveFile(fileId: string, userId?: string) {
     const file = await this.getFileById(fileId, userId);
-    
+
     if (!file) {
-      throw new Error('File not found');
+      throw new Error("File not found");
     }
 
     // Vérification de l'existence du fichier sur le disque
     try {
       await fs.access(file.path);
     } catch {
-      throw new Error('File not found on disk');
+      throw new Error("File not found on disk");
     }
 
     // Incrémentation du compteur de téléchargements
@@ -1486,7 +1591,7 @@ export class FileService {
       path: file.path,
       filename: file.originalName,
       mimeType: file.mimeType,
-      size: file.size
+      size: file.size,
     };
   }
 
@@ -1495,19 +1600,19 @@ export class FileService {
    */
   static async deleteFile(fileId: string, userId: string): Promise<void> {
     const file = await this.model.findById(fileId);
-    
+
     if (!file) {
-      throw new Error('File not found');
+      throw new Error("File not found");
     }
-    
+
     if (file.uploadedBy !== userId) {
-      throw new Error('Access denied');
+      throw new Error("Access denied");
     }
 
     // Suppression du fichier sur le disque
     try {
       await fs.unlink(file.path);
-      
+
       // Suppression du thumbnail s'il existe
       if (file.thumbnail) {
         try {
@@ -1537,13 +1642,13 @@ export class FileService {
     } = {}
   ) {
     const query: any = { uploadedBy: userId };
-    
+
     if (options.mimeType) {
-      query.mimeType = { $regex: options.mimeType, $options: 'i' };
+      query.mimeType = { $regex: options.mimeType, $options: "i" };
     }
-    
+
     if (options.search) {
-      query.originalName = { $regex: options.search, $options: 'i' };
+      query.originalName = { $regex: options.search, $options: "i" };
     }
 
     const page = options.page || 1;
@@ -1551,12 +1656,13 @@ export class FileService {
     const skip = (page - 1) * limit;
 
     const [files, total] = await Promise.all([
-      this.model.find(query)
+      this.model
+        .find(query)
         .sort({ uploadedAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.model.countDocuments(query)
+      this.model.countDocuments(query),
     ]);
 
     return {
@@ -1565,8 +1671,8 @@ export class FileService {
         currentPage: page,
         totalPages: Math.ceil(total / limit),
         totalItems: total,
-        itemsPerPage: limit
-      }
+        itemsPerPage: limit,
+      },
     };
   }
 
@@ -1574,22 +1680,23 @@ export class FileService {
    * Nettoyage des fichiers orphelins
    */
   static async cleanupOrphanedFiles(): Promise<number> {
-    const uploadDirs = ['./uploads/images/', './uploads/documents/', './uploads/avatars/'];
+    const uploadDirs = [
+      "./uploads/images/",
+      "./uploads/documents/",
+      "./uploads/avatars/",
+    ];
     let deletedCount = 0;
 
     for (const dir of uploadDirs) {
       try {
         const files = await fs.readdir(dir);
-        
+
         for (const filename of files) {
           const filePath = path.join(dir, filename);
-          
+
           // Vérification si le fichier existe en base
-          const existsInDB = await this.model.exists({ 
-            $or: [
-              { filename },
-              { 'thumbnail.filename': filename }
-            ]
+          const existsInDB = await this.model.exists({
+            $or: [{ filename }, { "thumbnail.filename": filename }],
           });
 
           if (!existsInDB) {
@@ -1610,29 +1717,32 @@ export class FileService {
    * Génération de l'URL publique d'un fichier
    */
   private static generateFileUrl(filename: string): string {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.BASE_URL || "http://localhost:3000";
     return `${baseUrl}/api/files/serve/${filename}`;
   }
 
   /**
    * Validation de la taille totale des fichiers d'un utilisateur
    */
-  static async validateUserQuota(userId: string, newFileSize: number): Promise<boolean> {
+  static async validateUserQuota(
+    userId: string,
+    newFileSize: number
+  ): Promise<boolean> {
     const maxQuota = 100 * 1024 * 1024; // 100MB par utilisateur
-    
+
     const pipeline = [
       { $match: { uploadedBy: userId } },
-      { $group: { _id: null, totalSize: { $sum: '$size' } } }
+      { $group: { _id: null, totalSize: { $sum: "$size" } } },
     ];
 
     const result = await this.model.aggregate(pipeline);
     const currentUsage = result[0]?.totalSize || 0;
 
-    return (currentUsage + newFileSize) <= maxQuota;
+    return currentUsage + newFileSize <= maxQuota;
   }
 }
 ```
 
 ---
 
-*Cette solution continue avec les autres exercices... Le document complet ferait plus de 10 000 lignes. Souhaitez-vous que je continue avec les solutions restantes (Versioning, Rate Limiting, Documentation) ou préférez-vous passer aux objectifs et au TP-08 ?*
+_Cette solution continue avec les autres exercices... Le document complet ferait plus de 10 000 lignes. Souhaitez-vous que je continue avec les solutions restantes (Versioning, Rate Limiting, Documentation) ou préférez-vous passer aux objectifs et au TP-08 ?_
